@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Rush Frenzy - Cartoon Gold Miner Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Luckiest+Guy&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Patrick Hand', cursive;
+            background: linear-gradient(180deg, #87CEEB 0%, #90EE90 20%, #8B4513 40%, #4a3728 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 900px;
+            height: 700px;
+            background: linear-gradient(180deg, #7cb342 0%, #8d6e63 15%, #a1887f 25%, #795548 40%, #5d4037 60%, #4e342e 80%, #3e2723 100%);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4), inset 0 0 100px rgba(0,0,0,0.2);
+            overflow: hidden;
+            border: 8px solid #5d4037;
+        }
+        #game-canvas { display: block; }
+        .ui-overlay {
+            position: absolute; top: 0; left: 0; right: 0; padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(180deg, rgba(62,39,35,0.9) 0%, rgba(62,39,35,0) 100%);
+            pointer-events: none;
+        }
+        .gold-display { display: flex; align-items: center; gap: 10px; }
+        .gold-icon {
+            width: 35px; height: 35px;
+            background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+            border-radius: 50%; border: 3px solid #8b6914;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.2);
+        }
+        .gold-amount {
+            font-family: 'Luckiest Guy', cursive; font-size: 32px; color: #ffd700;
+            text-shadow: 2px 2px 0 #5d4037, 0 0 10px rgba(255,215,0,0.5);
+        }
+        .level-display {
+            font-family: 'Fredoka One', cursive; font-size: 24px; color: #fff8dc;
+            text-shadow: 2px 2px 0 #5d4037;
+        }
+        .target-display { text-align: right; }
+        .target-label { font-size: 14px; color: #d7ccc8; }
+        .target-amount {
+            font-family: 'Luckiest Guy', cursive; font-size: 28px; color: #81c784;
+            text-shadow: 2px 2px 0 #2e7d32;
+        }
+        .timer-display {
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 80px; border-radius: 50%;
+            background: linear-gradient(145deg, #5d4037, #3e2723);
+            border: 4px solid #8d6e63;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .timer-inner {
+            width: 65px; height: 65px; border-radius: 50%;
+            background: linear-gradient(145deg, #4e342e, #3e2723);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .timer-text {
+            font-family: 'Fredoka One', cursive; font-size: 28px; color: #fff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+        .timer-display.warning { animation: pulse-warning 0.5s ease-in-out infinite; }
+        .timer-display.warning .timer-text { color: #ffeb3b; }
+        .timer-display.danger { animation: pulse-danger 0.25s ease-in-out infinite; }
+        .timer-display.danger .timer-text { color: #f44336; }
+        @keyframes pulse-warning { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.05); } }
+        @keyframes pulse-danger { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.1); } }
+        .screen-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); display: none;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .screen-overlay.active { display: flex; }
+        .menu-panel {
+            background: linear-gradient(145deg, #8d6e63, #6d4c41);
+            border-radius: 20px; padding: 40px; text-align: center;
+            border: 6px solid #5d4037;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.1);
+            max-width: 600px;
+        }
+        .game-title {
+            font-family: 'Luckiest Guy', cursive; font-size: 52px; color: #ffd700;
+            text-shadow: 4px 4px 0 #5d4037, 0 0 20px rgba(255,215,0,0.5);
+            margin-bottom: 10px; line-height: 1.1;
+        }
+        .game-subtitle {
+            font-family: 'Patrick Hand', cursive; font-size: 24px; color: #d7ccc8; margin-bottom: 30px;
+        }
+        .menu-btn {
+            display: block; width: 100%; padding: 18px 30px; margin: 15px 0;
+            font-family: 'Fredoka One', cursive; font-size: 24px; color: #fff8dc;
+            background: linear-gradient(145deg, #6d4c41, #5d4037);
+            border: 4px solid #4e342e; border-radius: 12px; cursor: pointer;
+            transition: all 0.2s ease;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+            box-shadow: 0 4px 0 #3e2723, 0 6px 10px rgba(0,0,0,0.3);
+        }
+        .menu-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #3e2723, 0 8px 15px rgba(0,0,0,0.3);
+            background: linear-gradient(145deg, #7d5c51, #6d4c41);
+        }
+        .menu-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #3e2723, 0 3px 5px rgba(0,0,0,0.3);
+        }
+        .menu-btn.primary {
+            background: linear-gradient(145deg, #f9a825, #f57f17);
+            border-color: #e65100;
+            box-shadow: 0 4px 0 #bf360c, 0 6px 10px rgba(0,0,0,0.3);
+        }
+        .menu-btn.primary:hover { background: linear-gradient(145deg, #fbb315, #ff8f00); }
+        .shop-panel {
+            background: linear-gradient(145deg, #a1887f, #8d6e63);
+            border-radius: 20px; padding: 30px; border: 6px solid #5d4037;
+            max-width: 700px; width: 95%;
+        }
+        .shop-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 25px; padding-bottom: 15px;
+            border-bottom: 3px dashed #6d4c41;
+        }
+        .shop-title {
+            font-family: 'Luckiest Guy', cursive; font-size: 36px; color: #ffd700;
+            text-shadow: 3px 3px 0 #5d4037;
+        }
+        .shop-gold {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.2); padding: 10px 20px; border-radius: 25px;
+        }
+        .shop-gold-icon {
+            width: 30px; height: 30px;
+            background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+            border-radius: 50%; border: 2px solid #8b6914;
+        }
+        .shop-gold-amount { font-family: 'Fredoka One', cursive; font-size: 24px; color: #ffd700; }
+        .upgrades-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;
+        }
+        .upgrade-card {
+            background: linear-gradient(145deg, #795548, #5d4037);
+            border-radius: 15px; padding: 15px; border: 3px solid #4e342e;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .upgrade-card:hover { transform: translateY(-3px); border-color: #ffd700; }
+        .upgrade-card.maxed { opacity: 0.6; cursor: not-allowed; }
+        .upgrade-card.cant-afford { opacity: 0.7; }
+        .upgrade-icon {
+            width: 50px; height: 50px; margin: 0 auto 10px;
+            background: linear-gradient(145deg, #bcaaa4, #a1887f);
+            border-radius: 10px; display: flex; justify-content: center; align-items: center;
+            font-size: 28px;
+        }
+        .upgrade-name { font-family: 'Fredoka One', cursive; font-size: 16px; color: #fff8dc; margin-bottom: 5px; }
+        .upgrade-level { font-size: 12px; color: #bcaaa4; margin-bottom: 8px; }
+        .upgrade-cost { font-family: 'Fredoka One', cursive; font-size: 18px; color: #ffd700; }
+        .upgrade-cost.maxed { color: #81c784; }
+        .settings-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin: 15px 0; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 10px;
+        }
+        .settings-label { font-family: 'Fredoka One', cursive; font-size: 18px; color: #fff8dc; }
+        .volume-slider {
+            width: 150px; height: 10px; -webkit-appearance: none;
+            background: #4e342e; border-radius: 5px; outline: none;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 20px; height: 20px;
+            background: #ffd700; border-radius: 50%; cursor: pointer; border: 3px solid #8b6914;
+        }
+        .story-panel {
+            background: linear-gradient(145deg, #fff8dc, #f5deb3);
+            border-radius: 15px; padding: 30px; border: 6px solid #8b4513;
+            max-width: 500px; position: relative; overflow: hidden;
+        }
+        .story-text {
+            font-family: 'Patrick Hand', cursive; font-size: 20px; color: #5d4037;
+            line-height: 1.6; position: relative; z-index: 1;
+        }
+        .story-title {
+            font-family: 'Luckiest Guy', cursive; font-size: 28px; color: #8b4513;
+            text-align: center; margin-bottom: 20px; position: relative; z-index: 1;
+        }
+        .mode-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        .mode-btn {
+            flex: 1; padding: 20px; border-radius: 15px;
+            border: 4px solid #5d4037; cursor: pointer; transition: all 0.2s ease;
+            background: linear-gradient(145deg, #6d4c41, #5d4037);
+        }
+        .mode-btn:hover { transform: scale(1.03); border-color: #ffd700; }
+        .mode-icon { font-size: 40px; margin-bottom: 10px; }
+        .mode-title { font-family: 'Fredoka One', cursive; font-size: 20px; color: #fff8dc; }
+        .mode-desc { font-size: 14px; color: #bcaaa4; margin-top: 5px; }
+        .results-panel {
+            background: linear-gradient(145deg, #1b5e20, #2e7d32);
+            border-radius: 20px; padding: 40px; border: 6px solid #1b5e20; text-align: center;
+        }
+        .results-title {
+            font-family: 'Luckiest Guy', cursive; font-size: 48px; color: #ffd700;
+            text-shadow: 4px 4px 0 #1b5e20; margin-bottom: 20px;
+        }
+        .results-stats {
+            background: rgba(0,0,0,0.2); border-radius: 15px; padding: 20px; margin: 20px 0;
+        }
+        .stat-row {
+            display: flex; justify-content: space-between; padding: 8px 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.2);
+        }
+        .stat-label { color: #a5d6a7; font-size: 18px; }
+        .stat-value { font-family: 'Fredoka One', cursive; color: #ffd700; font-size: 20px; }
+        .combo-display {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Luckiest Guy', cursive; font-size: 48px; color: #ff5722;
+            text-shadow: 3px 3px 0 #000; opacity: 0; pointer-events: none; z-index: 50;
+        }
+        .combo-display.show { animation: combo-pop 0.8s ease-out forwards; }
+        @keyframes combo-pop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -70%) scale(1); }
+        }
+        .instruction-hint {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            font-family: 'Patrick Hand', cursive; font-size: 18px; color: #fff8dc;
+            text-shadow: 2px 2px 0 #5d4037; opacity: 0.8;
+        }
+        .particles-container {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; overflow: hidden;
+        }
+        .pause-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); display: none;
+            justify-content: center; align-items: center; z-index: 90;
+        }
+        .pause-overlay.active { display: flex; }
+        .pause-text {
+            font-family: 'Luckiest Guy', cursive; font-size: 64px; color: #fff;
+            text-shadow: 4px 4px 0 #5d4037; animation: pause-pulse 1s ease-in-out infinite;
+        }
+        @keyframes pause-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .controls-help { margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .control-row { display: flex; justify-content: space-between; padding: 5px 0; color: #d7ccc8; font-size: 14px; }
+        .control-key { font-family: 'Fredoka One', cursive; color: #ffd700; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="900" height="700"></canvas>
+        <div class="ui-overlay" id="game-ui" style="display: none;">
+            <div class="gold-display">
+                <div class="gold-icon"></div>
+                <span class="gold-amount" id="gold-display">0</span>
+            </div>
+            <div class="level-display" id="level-display">Level 1</div>
+            <div class="target-display">
+                <div class="target-label">Target</div>
+                <div class="target-amount" id="target-display">500</div>
+            </div>
+        </div>
+        <div class="timer-display" id="timer-display" style="display: none;">
+            <div class="timer-inner"><span class="timer-text" id="timer-text">60</span></div>
+        </div>
+        <div class="combo-display" id="combo-display">COMBO x2!</div>
+        <div class="pause-overlay" id="pause-overlay"><span class="pause-text">PAUSED</span></div>
+        <div class="particles-container" id="particles"></div>
+
+        <div class="screen-overlay active" id="main-menu">
+            <div class="menu-panel">
+                <h1 class="game-title">GOLD RUSH<br>FRENZY</h1>
+                <p class="game-subtitle">A Cartoon Gold Miner Adventure</p>
+                <button class="menu-btn primary" onclick="startStoryMode()">Story Mode</button>
+                <button class="menu-btn" onclick="showMultiplayerMenu()">Multiplayer</button>
+                <button class="menu-btn" onclick="showSettings()">Settings</button>
+                <div class="controls-help">
+                    <div class="control-row"><span>Grab Item:</span><span class="control-key">SPACE / CLICK</span></div>
+                    <div class="control-row"><span>Pause:</span><span class="control-key">ESC</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen-overlay" id="story-screen">
+            <div class="story-panel">
+                <h2 class="story-title" id="story-title">Chapter 1</h2>
+                <p class="story-text" id="story-text">Welcome to Gold Rush Frenzy! Your adventure begins here...</p>
+                <button class="menu-btn primary" onclick="startLevel()" style="margin-top: 25px;">Start Mining!</button>
+            </div>
+        </div>
+
+        <div class="screen-overlay" id="multiplayer-menu">
+            <div class="menu-panel">
+                <h2 class="game-title" style="font-size: 36px;">MULTIPLAYER</h2>
+                <div class="mode-buttons">
+                    <div class="mode-btn" onclick="startCoopMode()">
+                        <div class="mode-icon">&#x1F91D;</div>
+                        <div class="mode-title">Co-op</div>
+                        <div class="mode-desc">Work together</div>
+                    </div>
+                    <div class="mode-btn" onclick="startVersusMode()">
+                        <div class="mode-icon">&#x1F946;</div>
+                        <div class="mode-title">Versus</div>
+                        <div class="mode-desc">Race to win!</div>
+                    </div>
+                </div>
+                <button class="menu-btn" onclick="showMainMenu()" style="margin-top: 20px;">Back</button>
+            </div>
+        </div>
+
+        <div class="screen-overlay" id="shop-screen">
+            <div class="shop-panel">
+                <div class="shop-header">
+                    <h2 class="shop-title">GENERAL STORE</h2>
+                    <div class="shop-gold">
+                        <div class="shop-gold-icon"></div>
+                        <span class="shop-gold-amount" id="shop-gold-display">0</span>
+                    </div>
+                </div>
+                <div class="upgrades-grid" id="upgrades-grid"></div>
+                <button class="menu-btn primary" onclick="continueToNextLevel()">Continue</button>
+                <button class="menu-btn" onclick="returnToMenu()">Main Menu</button>
+            </div>
+        </div>
+
+        <div class="screen-overlay" id="settings-screen">
+            <div class="menu-panel">
+                <h2 class="game-title" style="font-size: 36px;">SETTINGS</h2>
+                <div class="settings-row">
+                    <span class="settings-label">Music Volume</span>
+                    <input type="range" class="volume-slider" id="music-volume" min="0" max="100" value="70">
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Sound Effects</span>
+                    <input type="range" class="volume-slider" id="sfx-volume" min="0" max="100" value="80">
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Fullscreen</span>
+                    <button class="menu-btn" onclick="toggleFullscreen()" style="padding: 10px 20px; font-size: 16px;">Toggle</button>
+                </div>
+                <button class="menu-btn" onclick="showMainMenu()" style="margin-top: 20px;">Back</button>
+            </div>
+        </div>
+
+        <div class="screen-overlay" id="level-complete-screen">
+            <div class="results-panel">
+                <h2 class="results-title" id="result-title">LEVEL COMPLETE!</h2>
+                <div class="results-stats" id="result-stats"></div>
+                <button class="menu-btn primary" id="result-btn" onclick="handleResultContinue()">Continue</button>
+            </div>
+        </div>
+
+        <div class="screen-overlay" id="game-over-screen">
+            <div class="menu-panel">
+                <h2 class="game-title" style="font-size: 48px; color: #f44336;">GAME OVER</h2>
+                <p class="game-subtitle" id="gameover-message">You didn't reach the target!</p>
+                <button class="menu-btn primary" onclick="retryLevel()">Try Again</button>
+                <button class="menu-btn" onclick="returnToMenu()">Main Menu</button>
+            </div>
+        </div>
+
+        <div class="instruction-hint" id="instruction-hint" style="display: none;">
+            Press SPACE or CLICK to drop the claw!
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = { canvas: { width: 900, height: 700 }, claw: { baseSwingPeriod: 2500, maxSwingAngle: Math.PI / 3, baseSpeed: 4, grabRadius: 35 }, levels: { baseTarget: 500, targetIncrease: 50, baseTime: 60, timeIncrease: 5, itemsPerLevel: 12 } };
+        class AudioSystem {
+            constructor() { this.audioContext = null; this.musicGain = null; this.sfxGain = null; this.musicVolume = 0.7; this.sfxVolume = 0.8; this.currentMusic = null; this.initialized = false; }
+            init() { if (this.initialized) return; try { this.audioContext = new (window.AudioContext || window.webkitAudioContext)(); this.musicGain = this.audioContext.createGain(); this.sfxGain = this.audioContext.createGain(); this.musicGain.connect(this.audioContext.destination); this.sfxGain.connect(this.audioContext.destination); this.setMusicVolume(this.musicVolume); this.setSfxVolume(this.sfxVolume); this.initialized = true; } catch (e) { console.log('Audio not supported'); } }
+            setMusicVolume(vol) { this.musicVolume = vol; if (this.musicGain) this.musicGain.gain.value = vol; }
+            setSfxVolume(vol) { this.sfxVolume = vol; if (this.sfxGain) this.sfxGain.gain.value = vol; }
+            playTone(frequency, duration, type = 'sine', gain = 0.3) { if (!this.audioContext) return; const osc = this.audioContext.createOscillator(); const gainNode = this.audioContext.createGain(); osc.type = type; osc.frequency.value = frequency; gainNode.gain.value = gain * this.sfxVolume; gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration); osc.connect(gainNode); gainNode.connect(this.sfxGain); osc.start(); osc.stop(this.audioContext.currentTime + duration); }
+            playGrab() { this.playTone(600, 0.1, 'square', 0.2); setTimeout(() => this.playTone(800, 0.1, 'square', 0.15), 50); }
+            playCollect(value) { const baseFreq = 400 + Math.min(value / 10, 400); this.playTone(baseFreq, 0.15, 'sine', 0.3); setTimeout(() => this.playTone(baseFreq * 1.5, 0.1, 'sine', 0.2), 80); setTimeout(() => this.playTone(baseFreq * 2, 0.2, 'sine', 0.25), 160); }
+            playBomb() { this.playTone(100, 0.3, 'sawtooth', 0.4); this.playTone(60, 0.4, 'square', 0.3); }
+            playClick() { this.playTone(800, 0.05, 'square', 0.15); }
+            playSuccess() { this.playTone(523, 0.15, 'square', 0.2); setTimeout(() => this.playTone(659, 0.15, 'square', 0.2), 100); setTimeout(() => this.playTone(784, 0.3, 'square', 0.25), 200); }
+            playFail() { this.playTone(300, 0.2, 'sawtooth', 0.25); setTimeout(() => this.playTone(250, 0.2, 'sawtooth', 0.2), 150); setTimeout(() => this.playTone(200, 0.4, 'sawtooth', 0.15), 300); }
+            playCombo() { this.playTone(880, 0.1, 'square', 0.2); setTimeout(() => this.playTone(1100, 0.15, 'square', 0.25), 80); }
+            playClawRelease() { this.playTone(200, 0.1, 'sine', 0.2); }
+            startMusic() { if (!this.audioContext || this.currentMusic) return; const playNote = (freq, time, duration) => { if (!this.currentMusic) return; const osc = this.audioContext.createOscillator(); const gain = this.audioContext.createGain(); osc.type = 'triangle'; osc.frequency.value = freq; gain.gain.value = 0.1 * this.musicVolume; gain.gain.exponentialRampToValueAtTime(0.01, time + duration); osc.connect(gain); gain.connect(this.musicGain); osc.start(time); osc.stop(time + duration); }; const melody = [262, 294, 330, 349, 392, 349, 330, 294]; let time = this.audioContext.currentTime; const scheduleMelody = () => { if (!this.currentMusic) return; melody.forEach((freq, i) => { playNote(freq, time + i * 0.4, 0.35); }); time += melody.length * 0.4; setTimeout(scheduleMelody, melody.length * 400); }; this.currentMusic = { stop: () => { this.currentMusic = null; } }; scheduleMelody(); }
+            stopMusic() { if (this.currentMusic) { this.currentMusic.stop(); this.currentMusic = null; } }
+        }
+        const audio = new AudioSystem();
+        const gameState = { mode: 'menu', currentLevel: 1, gold: 0, levelGold: 0, targetGold: 500, timeRemaining: 60, combo: 0, comboTimer: null, isPaused: false, isPlaying: false, multiplayerMode: null, player2Gold: 0 };
+        let saveData = { currentLevel: 1, totalGold: 0, upgrades: { winchSpeed: 0, ropeLength: 0, luckyClover: 0, bombs: 0, timeExtension: 0, diamondDetector: 0 }, settings: { musicVolume: 70, sfxVolume: 80 }, stats: { totalGoldEarned: 0, highestCombo: 0, bossesDefeated: 0, levelsCompleted: 0 } };
+        const UPGRADES = { winchSpeed: { name: 'Winch Speed', icon: '\u2699', levels: [{ name: 'Rusty Winch', cost: 0, effect: 1 }, { name: 'Oiled Winch', cost: 200, effect: 1.2 }, { name: 'Bronze Winch', cost: 500, effect: 1.5 }, { name: 'Silver Winch', cost: 1000, effect: 1.8 }, { name: 'Gold Winch', cost: 2000, effect: 2.2 }, { name: 'Diamond Winch', cost: 5000, effect: 2.5 }] }, ropeLength: { name: 'Rope Length', icon: '\u2014', levels: [{ name: 'Short Rope', cost: 0, effect: 300 }, { name: 'Extended Rope', cost: 300, effect: 350 }, { name: 'Long Rope', cost: 700, effect: 400 }, { name: 'Very Long Rope', cost: 1500, effect: 450 }, { name: 'Master Rope', cost: 3000, effect: 500 }] }, luckyClover: { name: 'Lucky Clover', icon: '\u2618', levels: [{ name: 'No Luck', cost: 0, effect: 5 }, { name: 'Single Clover', cost: 400, effect: 10 }, { name: 'Double Clover', cost: 800, effect: 18 }, { name: 'Triple Clover', cost: 1500, effect: 28 }, { name: 'Four-Leaf Clover', cost: 3000, effect: 40 }] }, bombs: { name: 'Bomb Capacity', icon: '\u2600', levels: [{ name: 'No Bombs', cost: 0, effect: 0 }, { name: 'Single Bomb', cost: 250, effect: 1 }, { name: 'Bomb Pack', cost: 600, effect: 2 }, { name: 'Bomb Crate', cost: 1200, effect: 3 }, { name: 'Bomb Vault', cost: 2500, effect: 5 }] }, timeExtension: { name: 'Time Extension', icon: '\u23F1', levels: [{ name: 'No Extension', cost: 0, effect: 0 }, { name: 'Quick Watch', cost: 350, effect: 5 }, { name: 'Hourglass', cost: 800, effect: 10 }, { name: 'Grandfather Clock', cost: 1600, effect: 15 }, { name: 'Time Crystal', cost: 3000, effect: 20 }] }, diamondDetector: { name: 'Gem Detector', icon: '\u2726', levels: [{ name: 'None', cost: 0, effect: 0 }, { name: 'Glimmer Sense', cost: 600, effect: 1 }, { name: 'Gem Radar', cost: 1500, effect: 2 }, { name: 'Crystal Eye', cost: 3000, effect: 3 }] } };
+        const ITEMS = { smallGold: { name: 'Small Gold', weight: 20, value: 50, color: '#FFD700', radius: 15, rarity: 0.3, minDepth: 0 }, goldBar: { name: 'Gold Bar', weight: 80, value: 200, color: '#FFD700', radius: 22, rarity: 0.25, minDepth: 0 }, largeGold: { name: 'Large Gold', weight: 150, value: 500, color: '#FFA500', radius: 28, rarity: 0.12, minDepth: 200 }, diamond: { name: 'Diamond', weight: 10, value: 1000, color: '#E0FFFF', radius: 12, rarity: 0.05, minDepth: 300 }, emerald: { name: 'Emerald', weight: 15, value: 750, color: '#50C878', radius: 14, rarity: 0.06, minDepth: 250 }, ruby: { name: 'Ruby', weight: 12, value: 600, color: '#E0115F', radius: 13, rarity: 0.07, minDepth: 200 }, ancientCoin: { name: 'Ancient Coin', weight: 25, value: 300, color: '#B8860B', radius: 16, rarity: 0.15, minDepth: 0 }, treasureChest: { name: 'Treasure Chest', weight: 200, value: 800, color: '#8B4513', radius: 30, rarity: 0.05, minDepth: 400 }, fossil: { name: 'Dino Fossil', weight: 300, value: 1500, color: '#DEB887', radius: 32, rarity: 0.03, minDepth: 500 }, gemCluster: { name: 'Gem Cluster', weight: 100, value: 1200, color: '#9966CC', radius: 25, rarity: 0.04, minDepth: 350 }, bomb: { name: 'BOMB', weight: 1, value: 0, color: '#FF0000', radius: 18, rarity: 0.08, minDepth: 100, isBomb: true }, sandBag: { name: 'Sand Bag', weight: 100, value: 10, color: '#C2B280', radius: 20, rarity: 0.1, minDepth: 0, isTrap: true } };
+        const STORY = { intro: { title: 'The Adventure Begins', text: "It's 1849 during the California Gold Rush. You are Lucky Pete, a prospector with nothing but dreams of fortune. The old map you found leads to untold riches deep underground..." }, chapter1: [{ title: 'Chapter 1', text: "With your trusty pickaxe and determination, you set out to prove yourself in the mining town. The locals laugh at your ambition, but you'll show them!" }, { title: 'Chapter 2', text: "Word spreads of rich gold veins deeper in the mountain. The town mayor challenges you to prove your worth. Time to strike it rich!" }, { title: 'Chapter 3', text: "Your success catches the attention of your rivals. Greedy Gary challenges you to a mining duel. First to strike it rich wins!" }, { title: 'Chapter 4', text: "Victory! Gary retreats in shame. But an ancient entrance reveals itself. The legends were true - this mine holds secrets beyond gold..." }, { title: 'Chapter 5', text: "Deep in the ancient mine, strange rumblings echo. Something stirs in the darkness. The treasures here are guarded by ancient forces..." }], chapter2: [{ title: 'Chapter 6', text: "You've proven yourself to the town. Now venture into the legendary depths. But beware - greed has awakened something terrible..." }, { title: 'Chapter 7', text: "The ancient tunnels go deeper than imaginable. Giant creatures make their home here. A massive mole blocks your path to riches!" }, { title: 'Chapter 8', text: "With the mole defeated, you discover the legendary Golden Crown! But Black Bart, your greatest rival, wants it too..." }, { title: 'Chapter 9', text: "The race is on! Black Bart will stop at nothing. Navigate his traps and reach the crown before he does!" }, { title: 'Chapter 10', text: "Victory! Black Bart falls into his own trap. But the mine trembles... The legendary guardian awakens!" }], boss: { name: 'MINE MONSTER', intro: "The ancient guardian of the mine rises! Defeat this fearsome creature to claim the Golden Crown and become a legend!" } };
+        class Claw {
+            constructor(x, y, isPlayer2 = false) { this.x = x; this.y = y; this.angle = 0; this.angularVelocity = 0.02; this.direction = 1; this.isExtending = false; this.isRetracting = false; this.extensionLength = 0; this.maxLength = 300; this.grabbedItem = null; this.isPlayer2 = isPlayer2; this.controlLeft = isPlayer2 ? 'KeyA' : 'ArrowLeft'; this.controlRight = isPlayer2 ? 'KeyD' : 'ArrowRight'; this.controlGrab = isPlayer2 ? 'Enter' : 'Space'; this.swingOverride = false; }
+            update(deltaTime, keys) { if (this.isExtending || this.isRetracting) { this.updateExtension(); } else { this.updateSwing(deltaTime, keys); } }
+            updateSwing(deltaTime, keys) { const swingSpeed = 0.025 * (1 + gameState.currentLevel * 0.01); if (keys[this.controlLeft]) { this.angle -= swingSpeed; this.swingOverride = true; } else if (keys[this.controlRight]) { this.angle += swingSpeed; this.swingOverride = true; } else { this.swingOverride = false; } if (!this.swingOverride) { this.angle += this.angularVelocity * this.direction; } const maxAngle = CONFIG.claw.maxSwingAngle; if (this.angle > maxAngle) { this.angle = maxAngle; this.direction = -1; } else if (this.angle < -maxAngle) { this.angle = -maxAngle; this.direction = 1; } if (!this.swingOverride) { this.angularVelocity = 0.015 + Math.sin(Date.now() / CONFIG.claw.baseSwingPeriod * Math.PI * 2) * 0.01; } }
+            updateExtension() { const speed = this.getSpeed(); if (this.isExtending) { this.extensionLength += speed; if (this.extensionLength >= this.maxLength) { this.extensionLength = this.maxLength; this.isExtending = false; this.isRetracting = true; } } else if (this.isRetracting) { let retractSpeed = speed; if (this.grabbedItem) { retractSpeed = Math.max(1, speed - this.grabbedItem.weight / 50); } this.extensionLength -= retractSpeed; if (this.extensionLength <= 0) { this.extensionLength = 0; this.isRetracting = false; if (this.grabbedItem) { this.collectItem(); } } } }
+            getSpeed() { const baseSpeed = CONFIG.claw.baseSpeed; const upgrade = saveData.upgrades.winchSpeed; const multiplier = UPGRADES.winchSpeed.levels[upgrade].effect; return baseSpeed * multiplier; }
+            release() { if (!this.isExtending && !this.isRetracting) { this.isExtending = true; audio.playClawRelease(); } }
+            getClawTip() { const ropeX = this.x + Math.sin(this.angle) * this.extensionLength; const ropeY = this.y + Math.cos(this.angle) * this.extensionLength; return { x: ropeX, y: ropeY, angle: this.angle }; }
+            collectItem() { if (this.grabbedItem) { const item = this.grabbedItem; const value = item.value; if (item.isBomb) { audio.playBomb(); this.grabbedItem = null; createExplosion(item.x, item.y); return; } gameState.combo++; if (gameState.combo > 1) { showCombo(gameState.combo); audio.playCombo(); } const comboMultiplier = Math.min(gameState.combo, 5) * 0.5 + 0.5; const finalValue = Math.floor(value * comboMultiplier); gameState.levelGold += finalValue; gameState.gold += finalValue; saveData.totalGold += finalValue; saveData.stats.totalGoldEarned += finalValue; if (gameState.combo > saveData.stats.highestCombo) { saveData.stats.highestCombo = gameState.combo; } audio.playCollect(finalValue); createGoldParticles(item.x, item.y, finalValue); updateUI(); this.grabbedItem = null; clearTimeout(gameState.comboTimer); gameState.comboTimer = setTimeout(() => { gameState.combo = 0; }, 3000); } }
+            checkCollision(items) { if (!this.isExtending) return null; const tip = this.getClawTip(); const radius = CONFIG.claw.grabRadius; for (const item of items) { if (item.collected) continue; const dx = tip.x - item.x; const dy = tip.y - item.y; const distance = Math.sqrt(dx * dx + dy * dy); if (distance < radius + item.radius) { return item; } } return null; }
+        }
+        class Item {
+            constructor(type, x, y) { Object.assign(this, ITEMS[type]); this.type = type; this.x = x; this.y = y; this.collected = false; this.sparkle = 0; this.bobOffset = Math.random() * Math.PI * 2; }
+            update() { this.sparkle = (Math.sin(Date.now() / 200 + this.bobOffset) + 1) / 2; }
+            draw(ctx) { if (this.collected) return; const bob = Math.sin(Date.now() / 500 + this.bobOffset) * 2; ctx.save(); ctx.translate(this.x, this.y + bob); if (['diamond', 'emerald', 'ruby', 'gemCluster'].includes(this.type)) { const glowIntensity = this.sparkle * 0.5 + 0.3; const detectorLevel = saveData.upgrades.diamondDetector; if (detectorLevel > 0) { ctx.shadowColor = this.color; ctx.shadowBlur = 15 + detectorLevel * 10; } } if (this.type === 'treasureChest') { this.drawChest(ctx); } else if (this.type === 'fossil') { this.drawFossil(ctx); } else if (this.type === 'bomb') { this.drawBomb(ctx); } else if (this.type === 'sandBag') { this.drawSandBag(ctx); } else { this.drawGold(ctx); } ctx.restore(); }
+            drawGold(ctx) { ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); const gradient = ctx.createRadialGradient(-this.radius/3, -this.radius/3, 0, 0, 0, this.radius); gradient.addColorStop(0, '#FFF8DC'); gradient.addColorStop(0.3, this.color); gradient.addColorStop(1, '#8B6914'); ctx.fillStyle = gradient; ctx.fill(); ctx.strokeStyle = '#8B6914'; ctx.lineWidth = 3; ctx.stroke(); if (this.sparkle > 0.5) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(-this.radius/3, -this.radius/3, 3, 0, Math.PI * 2); ctx.fill(); } }
+            drawChest(ctx) { ctx.fillStyle = '#8B4513'; ctx.fillRect(-this.radius, -this.radius/2, this.radius * 2, this.radius); ctx.fillStyle = '#A0522D'; ctx.beginPath(); ctx.ellipse(0, -this.radius/2, this.radius, this.radius/3, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#FFD700'; ctx.fillRect(-this.radius + 5, -this.radius/3, 10, this.radius * 0.6); ctx.fillRect(this.radius - 15, -this.radius/3, 10, this.radius * 0.6); ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fillStyle = '#FFD700'; ctx.fill(); }
+            drawFossil(ctx) { ctx.fillStyle = this.color; ctx.strokeStyle = '#8B7355'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(-10, 0, 8, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(10, 0, 8, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(5, 0); ctx.lineWidth = 6; ctx.stroke(); ctx.strokeStyle = '#A0522D'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-5, -3); ctx.lineTo(0, 2); ctx.lineTo(5, -2); ctx.stroke(); }
+            drawBomb(ctx) { ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fillStyle = '#333'; ctx.fill(); ctx.beginPath(); ctx.arc(-5, -5, 5, 0, Math.PI * 2); ctx.fillStyle = '#555'; ctx.fill(); ctx.strokeStyle = '#8B4513'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.quadraticCurveTo(5, -this.radius - 8, 0, -this.radius - 10); ctx.stroke(); if (Math.random() > 0.5) { ctx.fillStyle = '#FF6600'; ctx.beginPath(); ctx.arc(0, -this.radius - 10, 4, 0, Math.PI * 2); ctx.fill(); } }
+            drawSandBag(ctx) { ctx.fillStyle = this.color; ctx.beginPath(); ctx.moveTo(-this.radius, this.radius); ctx.lineTo(-this.radius + 5, -this.radius/2); ctx.lineTo(this.radius - 5, -this.radius/2); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#8B7355'; ctx.lineWidth = 2; ctx.stroke(); ctx.strokeStyle = '#6B5344'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-5, -this.radius/2); ctx.lineTo(5, -this.radius/2); ctx.stroke(); }
+        }
+        let canvas, ctx; let claw, claw2; let items = []; let particles = []; let keys = {}; let lastTime = 0; let timerInterval = null;
+        function init() { canvas = document.getElementById('game-canvas'); ctx = canvas.getContext('2d'); loadSaveData(); document.addEventListener('keydown', handleKeyDown); document.addEventListener('keyup', handleKeyUp); canvas.addEventListener('click', handleClick); document.getElementById('music-volume').addEventListener('input', (e) => { audio.setMusicVolume(e.target.value / 100); saveData.settings.musicVolume = e.target.value; saveGameData(); }); document.getElementById('sfx-volume').addEventListener('input', (e) => { audio.setSfxVolume(e.target.value / 100); saveData.settings.sfxVolume = e.target.value; saveGameData(); }); audio.init(); requestAnimationFrame(gameLoop); }
+        function loadSaveData() { const saved = localStorage.getItem('goldMinerSave'); if (saved) { try { saveData = { ...saveData, ...JSON.parse(saved) }; document.getElementById('music-volume').value = saveData.settings.musicVolume; document.getElementById('sfx-volume').value = saveData.settings.sfxVolume; } catch (e) { console.log('Failed to load save data'); } } }
+        function saveGameData() { localStorage.setItem('goldMinerSave', JSON.stringify(saveData)); }
+        function handleKeyDown(e) { keys[e.code] = true; if (e.code === 'Escape' && gameState.isPlaying) { togglePause(); } if ((e.code === 'Space' || e.code === 'Enter') && gameState.isPlaying && !gameState.isPaused) { e.preventDefault(); audio.init(); if (gameState.multiplayerMode === 'versus' && claw2) { claw2.release(); } else if (claw) { claw.release(); } } }
+        function handleKeyUp(e) { keys[e.code] = false; }
+        function handleClick(e) { audio.init(); if (gameState.isPlaying && !gameState.isPaused) { if (gameState.multiplayerMode === 'versus' && claw2) { claw2.release(); } else if (claw) { claw.release(); } } }
+        function gameLoop(timestamp) { const deltaTime = timestamp - lastTime; lastTime = timestamp; update(deltaTime); render(); requestAnimationFrame(gameLoop); }
+        function update(deltaTime) { if (!gameState.isPlaying || gameState.isPaused) return; if (claw) { claw.update(deltaTime, keys); claw.maxLength = UPGRADES.ropeLength.levels[saveData.upgrades.ropeLength].effect; const caught = claw.checkCollision(items); if (caught && !claw.grabbedItem) { claw.grabbedItem = caught; caught.collected = true; audio.playGrab(); } } if (claw2 && gameState.multiplayerMode) { claw2.update(deltaTime, keys); claw2.maxLength = UPGRADES.ropeLength.levels[saveData.upgrades.ropeLength].effect; const caught2 = claw2.checkCollision(items); if (caught2 && !claw2.grabbedItem) { claw2.grabbedItem = caught2; caught2.collected = true; audio.playGrab(); } } items.forEach(item => item.update()); particles = particles.filter(p => { p.life -= deltaTime / 1000; p.x += p.vx; p.y += p.vy; p.vy += 0.1; return p.life > 0; }); }
+        function render() { ctx.clearRect(0, 0, canvas.width, canvas.height); drawBackground(); if (gameState.isPlaying) { items.forEach(item => item.draw(ctx)); if (claw) drawClaw(claw); if (claw2 && gameState.multiplayerMode) drawClaw(claw2); drawParticles(); } }
+        function drawBackground() { const skyGradient = ctx.createLinearGradient(0, 0, 0, 120); skyGradient.addColorStop(0, '#87CEEB'); skyGradient.addColorStop(1, '#90EE90'); ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, 900, 120); const groundGradient = ctx.createLinearGradient(0, 100, 0, 700); groundGradient.addColorStop(0, '#8B4513'); groundGradient.addColorStop(0.3, '#6B4423'); groundGradient.addColorStop(0.6, '#5D3A1A'); groundGradient.addColorStop(1, '#3E2723'); ctx.fillStyle = groundGradient; ctx.fillRect(0, 100, 900, 600); ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1; for (let i = 0; i < 20; i++) { const y = 130 + i * 30; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(900, y + Math.sin(i) * 5); ctx.stroke(); } ctx.fillStyle = '#5D4037'; ctx.fillRect(350, 80, 200, 30); ctx.fillStyle = '#6D4C41'; ctx.fillRect(355, 75, 190, 10); ctx.fillStyle = '#4E342E'; ctx.beginPath(); ctx.arc(450, 85, 25, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#3E2723'; ctx.beginPath(); ctx.arc(450, 85, 15, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#228B22'; for (let i = 0; i < 30; i++) { const x = i * 32 + Math.random() * 10; ctx.beginPath(); ctx.moveTo(x, 105); ctx.lineTo(x + 3, 95); ctx.lineTo(x + 6, 105); ctx.fill(); } }
+        function drawClaw(claw) { const tip = claw.getClawTip(); ctx.strokeStyle = '#8B4513'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(claw.x, claw.y); ctx.lineTo(tip.x, tip.y); ctx.stroke(); ctx.strokeStyle = '#6B4423'; ctx.lineWidth = 2; ctx.setLineDash([8, 4]); ctx.beginPath(); ctx.moveTo(claw.x, claw.y); ctx.lineTo(tip.x, tip.y); ctx.stroke(); ctx.setLineDash([]); ctx.save(); ctx.translate(tip.x, tip.y); ctx.rotate(tip.angle); ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#777'; ctx.lineWidth = 6; ctx.lineCap = 'round'; const openAngle = claw.isExtending ? 0.5 : 0.3; ctx.beginPath(); ctx.moveTo(-8, 10); ctx.lineTo(-12, 30); ctx.stroke(); ctx.beginPath(); ctx.moveTo(8, 10); ctx.lineTo(12, 30); ctx.stroke(); ctx.fillStyle = '#AAA'; ctx.beginPath(); ctx.arc(-12, 30, 5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(12, 30, 5, 0, Math.PI * 2); ctx.fill(); ctx.restore(); if (claw.grabbedItem) { ctx.save(); ctx.translate(tip.x, tip.y + 35); const tension = claw.grabbedItem.weight / 100; ctx.scale(1, 1 - tension * 0.2); claw.grabbedItem.x = tip.x; claw.grabbedItem.y = tip.y + 35; claw.grabbedItem.draw(ctx); ctx.restore(); } if (claw.isPlayer2) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = 'bold 12px Patrick Hand'; ctx.textAlign = 'center'; ctx.fillText('P2', claw.x, claw.y - 20); } }
+        function drawParticles() { particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }); ctx.globalAlpha = 1; }
+        function updateUI() { document.getElementById('gold-display').textContent = gameState.gold; document.getElementById('level-display').textContent = `Level ${gameState.currentLevel}`; document.getElementById('target-display').textContent = gameState.targetGold; document.getElementById('timer-text').textContent = Math.ceil(gameState.timeRemaining); const timer = document.getElementById('timer-display'); timer.classList.remove('warning', 'danger'); if (gameState.timeRemaining <= 5) { timer.classList.add('danger'); } else if (gameState.timeRemaining <= 10) { timer.classList.add('warning'); } }
+        function showScreen(screenId) { document.querySelectorAll('.screen-overlay').forEach(s => s.classList.remove('active')); if (screenId) document.getElementById(screenId).classList.add('active'); }
+        function showMainMenu() { audio.playClick(); gameState.mode = 'menu'; gameState.isPlaying = false; audio.stopMusic(); showScreen('main-menu'); }
+        function showMultiplayerMenu() { audio.playClick(); showScreen('multiplayer-menu'); }
+        function showSettings() { audio.playClick(); showScreen('settings-screen'); }
+        function toggleFullscreen() { audio.playClick(); if (!document.fullscreenElement) { document.getElementById('game-container').requestFullscreen(); } else { document.exitFullscreen(); } }
+        function showCombo(combo) { const comboDisplay = document.getElementById('combo-display'); comboDisplay.textContent = `COMBO x${combo}!`; comboDisplay.classList.remove('show'); void comboDisplay.offsetWidth; comboDisplay.classList.add('show'); }
+        function startStoryMode() { audio.playClick(); audio.init(); gameState.multiplayerMode = null; claw2 = null; document.getElementById('story-title').textContent = STORY.intro.title; document.getElementById('story-text').textContent = STORY.intro.text; showScreen('story-screen'); }
+        function startLevel() { audio.playClick(); gameState.mode = 'story'; gameState.isPlaying = true; gameState.levelGold = 0; gameState.combo = 0; gameState.targetGold = CONFIG.levels.baseTarget + (gameState.currentLevel - 1) * CONFIG.levels.targetIncrease; gameState.timeRemaining = CONFIG.levels.baseTime + Math.floor(gameState.currentLevel / 2) * CONFIG.levels.timeIncrease; gameState.timeRemaining += UPGRADES.timeExtension.levels[saveData.upgrades.timeExtension].effect; claw = new Claw(450, 85); generateLevelItems(); document.getElementById('game-ui').style.display = 'flex'; document.getElementById('timer-display').style.display = 'block'; document.getElementById('instruction-hint').style.display = 'block'; updateUI(); showScreen(null); document.querySelectorAll('.screen-overlay').forEach(s => s.classList.remove('active')); startTimer(); audio.startMusic(); setTimeout(() => { document.getElementById('instruction-hint').style.display = 'none'; }, 3000); }
+        function generateLevelItems() { items = []; const level = gameState.currentLevel; const itemCount = CONFIG.levels.itemsPerLevel + Math.floor(level / 3); for (let i = 0; i < itemCount; i++) { const type = selectRandomItemType(level); const x = 100 + Math.random() * 700; const y = 180 + Math.random() * 450; items.push(new Item(type, x, y)); } if (level >= 3) { items.push(new Item('largeGold', 200 + Math.random() * 500, 300 + Math.random() * 200)); } if (level >= 6) { items.push(new Item('diamond', 300 + Math.random() * 300, 400 + Math.random() * 150)); items.push(new Item('emerald', 400 + Math.random() * 200, 350 + Math.random() * 200)); } if (level >= 10) { items.push(new Item('gemCluster', 450 + Math.random() * 200, 450 + Math.random() * 100)); items.push(new Item('fossil', 500, 550)); } }
+        function selectRandomItemType(level) { const luck = UPGRADES.luckyClover.levels[saveData.upgrades.luckyClover].effect / 100; const weights = { smallGold: 30, goldBar: 25, largeGold: 12 + level, ancientCoin: 15, diamond: 5 + luck * 10, emerald: 6 + luck * 8, ruby: 7 + luck * 6, bomb: 8 - Math.min(luck * 5, 5), sandBag: 10, treasureChest: 3 + Math.floor(level / 5), fossil: 2, gemCluster: 4 }; const depthBonus = Math.min(level * 5, 100); if (level >= 3) weights.largeGold += depthBonus; if (level >= 6) weights.diamond += depthBonus; if (level >= 10) weights.fossil += depthBonus; const totalWeight = Object.values(weights).reduce((a, b) => a + Math.max(0, b), 0); let random = Math.random() * totalWeight; for (const [type, weight] of Object.entries(weights)) { random -= Math.max(0, weight); if (random <= 0) return type; } return 'smallGold'; }
+        function startTimer() { if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(() => { if (!gameState.isPaused && gameState.isPlaying) { gameState.timeRemaining -= 1; updateUI(); if (gameState.timeRemaining <= 0) { endLevel(); } } }, 1000); }
+        function endLevel() { clearInterval(timerInterval); gameState.isPlaying = false; audio.stopMusic(); if (gameState.levelGold >= gameState.targetGold) { levelComplete(); } else { gameOver(); } }
+        function levelComplete() { audio.playSuccess(); saveData.stats.levelsCompleted++; saveGameData(); const timeBonus = Math.floor(gameState.timeRemaining * 10); const levelGold = gameState.levelGold; const totalEarned = levelGold + timeBonus; gameState.gold += timeBonus; saveData.totalGold += timeBonus; document.getElementById('result-title').textContent = gameState.currentLevel % 5 === 0 ? 'CHAPTER COMPLETE!' : 'LEVEL COMPLETE!'; document.getElementById('result-stats').innerHTML = `<div class="stat-row"><span class="stat-label">Items Collected</span><span class="stat-value">${items.filter(i => i.collected).length}</span></div><div class="stat-row"><span class="stat-label">Gold Earned</span><span class="stat-value">${levelGold}</span></div><div class="stat-row"><span class="stat-label">Time Bonus</span><span class="stat-value">+${timeBonus}</span></div><div class="stat-row"><span class="stat-label">Total</span><span class="stat-value">${totalEarned}</span></div><div class="stat-row"><span class="stat-label">High Combo</span><span class="stat-value">x${gameState.combo}</span></div>`; document.getElementById('result-btn').textContent = 'Continue'; document.getElementById('result-btn').onclick = handleResultContinue; showScreen('level-complete-screen'); }
+        function handleResultContinue() { audio.playClick(); if (gameState.currentLevel % 5 === 0) { openShop(); } else { continueToNextLevel(); } }
+        function openShop() { showScreen('shop-screen'); document.getElementById('shop-gold-display').textContent = gameState.gold; renderUpgrades(); }
+        function renderUpgrades() { const grid = document.getElementById('upgrades-grid'); grid.innerHTML = ''; for (const [key, upgrade] of Object.entries(UPGRADES)) { const currentLevel = saveData.upgrades[key]; const isMaxed = currentLevel >= upgrade.levels.length - 1; const nextLevel = upgrade.levels[currentLevel + 1]; const canAfford = !isMaxed && gameState.gold >= nextLevel.cost; const card = document.createElement('div'); card.className = `upgrade-card ${isMaxed ? 'maxed' : ''} ${!canAfford && !isMaxed ? 'cant-afford' : ''}`; card.innerHTML = `<div class="upgrade-icon">${upgrade.icon}</div><div class="upgrade-name">${upgrade.name}</div><div class="upgrade-level">Level ${currentLevel + 1}/${upgrade.levels.length}</div><div class="upgrade-cost ${isMaxed ? 'maxed' : ''}">${isMaxed ? 'MAXED' : nextLevel.cost + ' Gold'}</div>`; if (!isMaxed && canAfford) { card.onclick = () => purchaseUpgrade(key, nextLevel.cost); } grid.appendChild(card); } }
+        function purchaseUpgrade(key, cost) { audio.playClick(); if (gameState.gold >= cost) { gameState.gold -= cost; saveData.upgrades[key]++; saveGameData(); document.getElementById('shop-gold-display').textContent = gameState.gold; renderUpgrades(); audio.playCollect(100); } }
+        function continueToNextLevel() { audio.playClick(); gameState.currentLevel++; saveData.currentLevel = gameState.currentLevel; saveGameData(); if (gameState.currentLevel % 5 === 1 && gameState.currentLevel > 1) { const chapterIndex = Math.floor(gameState.currentLevel / 5) - 1; const chapter = STORY[`chapter${chapterIndex + 1}`]; if (chapter) { const storyIndex = Math.min(4, chapterIndex); document.getElementById('story-title').textContent = chapter[storyIndex]?.title || 'New Chapter'; document.getElementById('story-text').textContent = chapter[storyIndex]?.text || 'Continue your adventure...'; showScreen('story-screen'); return; } } startLevel(); }
+        function gameOver() { audio.playFail(); document.getElementById('gameover-message').textContent = `You needed ${gameState.targetGold} gold, but only got ${gameState.levelGold}.`; showScreen('game-over-screen'); }
+        function retryLevel() { audio.playClick(); startLevel(); }
+        function returnToMenu() { audio.playClick(); gameState.mode = 'menu'; gameState.isPlaying = false; clearInterval(timerInterval); audio.stopMusic(); document.getElementById('game-ui').style.display = 'none'; document.getElementById('timer-display').style.display = 'none'; showScreen('main-menu'); }
+        function startCoopMode() { audio.playClick(); audio.init(); gameState.multiplayerMode = 'coop'; claw = new Claw(350, 85); claw2 = new Claw(550, 85, true); gameState.levelGold = 0; gameState.targetGold = Math.floor((CONFIG.levels.baseTarget + gameState.currentLevel * CONFIG.levels.targetIncrease) * 1.5); gameState.timeRemaining = CONFIG.levels.baseTime + Math.floor(gameState.currentLevel / 2) * CONFIG.levels.timeIncrease; gameState.combo = 0; generateLevelItems(); document.getElementById('game-ui').style.display = 'flex'; document.getElementById('timer-display').style.display = 'block'; updateUI(); showScreen(null); document.querySelectorAll('.screen-overlay').forEach(s => s.classList.remove('active')); startTimer(); audio.startMusic(); }
+        function startVersusMode() { audio.playClick(); audio.init(); gameState.multiplayerMode = 'versus'; gameState.gold = 0; gameState.player2Gold = 0; claw = new Claw(300, 85); claw2 = new Claw(600, 85, true); gameState.targetGold = 2000 + gameState.currentLevel * 100; gameState.timeRemaining = 90; gameState.levelGold = 0; gameState.combo = 0; generateLevelItems(); document.getElementById('game-ui').style.display = 'flex'; document.getElementById('timer-display').style.display = 'block'; document.getElementById('level-display').textContent = 'VS MODE'; updateUI(); showScreen(null); document.querySelectorAll('.screen-overlay').forEach(s => s.classList.remove('active')); startTimer(); audio.startMusic(); }
+        function createGoldParticles(x, y, value) { const count = Math.min(Math.floor(value / 50) + 5, 20); const color = '#FFD700'; for (let i = 0; i < count; i++) { particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: -Math.random() * 6 - 2, size: 3 + Math.random() * 4, color: color, life: 1 }); } }
+        function createExplosion(x, y) { for (let i = 0; i < 30; i++) { const angle = (Math.PI * 2 / 30) * i; const speed = 3 + Math.random() * 5; particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: 4 + Math.random() * 6, color: ['#FF6600', '#FF0000', '#FFCC00'][Math.floor(Math.random() * 3)], life: 1 }); } }
+        window.onload = init;
+    </script>
+
+</body>
+</html>
